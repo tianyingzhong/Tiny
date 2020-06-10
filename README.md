@@ -122,6 +122,57 @@ android {
         });
 ```
 
+#### **封装**
+    public static void init(Application application, boolean isDebug) {
+        Tiny.getInstance().debug(isDebug).init(application);
+    }
+    
+    public static void compressAsFile(String resFile, String outFile, CompressCallback callback) {
+        try {
+            File file = new File(resFile);
+            compressAsFile(Bitmap.Config.ARGB_8888, file, outFile, callback);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public static void compressAsFile(Bitmap.Config config, File resFile, String outfile, CompressCallback callback) {
+        try {
+            FileInputStream is = new FileInputStream(resFile);
+            long size = is.available();
+            if (size / 1024 <= 200) {
+                // 假如图片不足200K，不用压缩，直接上传
+                callback.callback(true, resFile.getAbsolutePath());
+                LogUtil.e("PicCompressUtil", "小于200K，使用原图");
+                return;
+            }
+            LogUtil.e("PicCompressUtil", "压缩图片：开始压缩");
+            Tiny.FileCompressOptions compressOptions = new Tiny.FileCompressOptions();
+            if (config == null) {
+                config = Bitmap.Config.ARGB_8888;
+            }
+            compressOptions.quality = 90;// 图片质量（0-100）
+            compressOptions.config = config;
+            compressOptions.outfile = outfile;// 输出图片路径
+            Tiny.getInstance().source(resFile).asFile().withOptions(compressOptions).compress((isSuccess, tinyFile, throwable) -> {
+                if (callback != null) {
+                    if (isSuccess) {
+                        callback.callback(true, tinyFile);
+                        resFile.deleteOnExit();
+                    } else {
+                        callback.callback(false, resFile.getAbsolutePath());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public interface CompressCallback {
+        void callback(boolean isSuccess, String outfile);
+    }
+
 ## **Version**
 
 * **v0.0.1**：The first version.
